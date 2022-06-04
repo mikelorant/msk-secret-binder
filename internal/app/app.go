@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,11 +14,15 @@ import (
 	"github.com/theckman/yacspin"
 )
 
+const (
+	_region = "ap-southeast-2"
+)
+
 func Run() error {
 	fmt.Println("Bind secrets to AWS MSK clusters.")
 	fmt.Println()
 
-	config := aws.NewConfig().WithRegion("ap-southeast-2")
+	config := aws.NewConfig().WithRegion(_region)
 	session := session.Must(session.NewSession())
 
 	svc := &Service{
@@ -29,10 +34,19 @@ func Run() error {
 	spinner := newSpinner()
 
 	spinner.Start()
-	spinner.Message("kafka list clusters")
-	if err := svc.listClusters(); err != nil {
-		return fmt.Errorf("unable to list clusters: %w", err)
-	}
+	spinner.Message("kafka list clusters and secretsmanager list secrets")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		svc.listClusters()
+	}()
+	go func() {
+		defer wg.Done()
+		svc.listSecrets()
+	}()
+	wg.Wait()
 
 	for _, cluster := range svc.clusters {
 		name := aws.StringValue(cluster.clusterInfo.ClusterName)
@@ -42,24 +56,22 @@ func Run() error {
 		}
 	}
 
-	spinner.Message("secretsmanager list secrets")
-	if err := svc.listSecrets(); err != nil {
-		return fmt.Errorf("unable to list secrets: %w", err)
-	}
 	spinner.Suffix(" retrieved data")
 	spinner.Stop()
 	fmt.Println()
 
-	svc.mapSecretsToClusters()
-	svc.reconcileClusterSecrets()
+	for _, cluster := range svc.clusters {
+		mapSecretsToClusters(cluster, svc.secrets)
+		reconcileClusterSecrets(cluster)
+	}
 
 	svc.printOverview()
 	svc.printChangeSet()
 
-	fmt.Println("Press enter to apply changes.")
-
-	fmt.Scanln()
-
+	// fmt.Println("Press enter to apply changes.")
+	//
+	// fmt.Scanln()
+	//
 	// spinner.Suffix(" modifying clusters")
 	// spinner.Start()
 	// for _, cluster := range svc.clusters {
@@ -77,30 +89,25 @@ func Run() error {
 	return nil
 }
 
-func (svc *Service) mapSecretsToClusters() error {
-	for _, cluster := range svc.clusters {
-		sl := []*string{}
-	secret:
-		for _, secret := range svc.secrets {
-			if isCluster(cluster.clusterInfo.ClusterName, secret.Tags) {
-				sl = append(sl, secret.ARN)
-				continue secret
-			}
+func mapSecretsToClusters(cluster *Cluster, secrets []*secretsmanager.SecretListEntry) error {
+	sl := []*string{}
+	for _, secret := range secrets {
+		if isCluster(cluster.clusterInfo.ClusterName, secret.Tags) {
+			sl = append(sl, secret.ARN)
+			continue
 		}
-		cluster.secretArnList = sl
 	}
+	cluster.secretArnList = sl
 
 	return nil
 }
 
-func (svc *Service) reconcileClusterSecrets() error {
-	for _, cluster := range svc.clusters {
-		cluster.secretArnChangeSet = &SecretChangeSet{}
-		add := diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
-		remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
-		cluster.secretArnChangeSet.add = append(cluster.secretArnChangeSet.add, add...)
-		cluster.secretArnChangeSet.remove = append(cluster.secretArnChangeSet.remove, remove...)
-	}
+func reconcileClusterSecrets(cluster *Cluster) error {
+	cluster.secretArnChangeSet = &SecretChangeSet{}
+	add := diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
+	remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
+	cluster.secretArnChangeSet.add = append(cluster.secretArnChangeSet.add, add...)
+	cluster.secretArnChangeSet.remove = append(cluster.secretArnChangeSet.remove, remove...)
 
 	return nil
 }
