@@ -13,7 +13,7 @@ func diff(slice1, slice2 []*string) []*string {
 				break s2
 			}
 		}
-		if found != true {
+		if !found {
 			diff = append(diff, s1)
 		}
 	}
