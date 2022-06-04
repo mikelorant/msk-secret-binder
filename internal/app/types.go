@@ -31,10 +31,10 @@ type SecretChangeSet struct {
 func (s SecretChangeSet) String() string {
 	var str strings.Builder
 	for _, v := range s.add {
-		fmt.Fprintf(&str, "Add: %v\n", aws.StringValue(v))
+		fmt.Fprintf(&str, "+%v\n", aws.StringValue(v))
 	}
 	for _, v := range s.remove {
-		fmt.Fprintf(&str, "Remove: %v\n", aws.StringValue(v))
+		fmt.Fprintf(&str, "-%v\n", aws.StringValue(v))
 	}
 	return str.String()
 }

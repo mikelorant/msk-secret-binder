@@ -48,13 +48,15 @@ func Run() error {
 	}()
 	wg.Wait()
 
+	spinner.Message("list scram secrets")
 	for _, cluster := range svc.clusters {
-		name := aws.StringValue(cluster.clusterInfo.ClusterName)
-		spinner.Message(fmt.Sprintf("list scram secrets [%v]", name))
-		if err := svc.listScramSecrets(cluster); err != nil {
-			return fmt.Errorf("unable to list scramsecrets for %v: %w", name, err)
-		}
+		wg.Add(1)
+		go func(cluster *Cluster) {
+			defer wg.Done()
+			svc.listScramSecrets(cluster)
+		}(cluster)
 	}
+	wg.Wait()
 
 	spinner.Suffix(" retrieved data")
 	spinner.Stop()
