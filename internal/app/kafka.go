@@ -17,6 +17,8 @@ func (svc *Service) listClusters() error {
 		svc.clusters = append(svc.clusters, &Cluster{
 			clusterInfo:              ci,
 			assosciatedSecretArnList: []*string{},
+			secretArnList:            []*string{},
+			secretArnChangeSet:       &SecretChangeSet{},
 		})
 	}
 

@@ -19,19 +19,11 @@ const (
 )
 
 func Run() error {
+	svc := newService()
+	spinner := newSpinner()
+
 	fmt.Println("Bind secrets to AWS MSK clusters.")
 	fmt.Println()
-
-	config := aws.NewConfig().WithRegion(_region)
-	session := session.Must(session.NewSession())
-
-	svc := &Service{
-		kafka:          kafka.New(session, config),
-		secretsmanager: secretsmanager.New(session, config),
-		clusters:       []*Cluster{},
-	}
-
-	spinner := newSpinner()
 
 	spinner.Start()
 	spinner.Message("kafka list clusters and secretsmanager list secrets")
@@ -91,21 +83,43 @@ func Run() error {
 	return nil
 }
 
+func newService() *Service {
+	config := aws.NewConfig().WithRegion(_region)
+	session := session.Must(session.NewSession())
+
+	return &Service{
+		kafka:          kafka.New(session, config),
+		secretsmanager: secretsmanager.New(session, config),
+		clusters:       []*Cluster{},
+	}
+}
+
+func newSpinner() *yacspin.Spinner {
+	cfg := yacspin.Config{
+		Frequency:       50 * time.Millisecond,
+		CharSet:         yacspin.CharSets[14],
+		Suffix:          " retrieving data",
+		StopCharacter:   "✓",
+		SuffixAutoColon: true,
+		StopColors:      []string{"fgGreen"},
+	}
+
+	spinner, _ := yacspin.New(cfg)
+	return spinner
+}
+
 func mapSecretsToClusters(cluster *Cluster, secrets []*secretsmanager.SecretListEntry) error {
-	sl := []*string{}
 	for _, secret := range secrets {
 		if isCluster(cluster.clusterInfo.ClusterName, secret.Tags) {
-			sl = append(sl, secret.ARN)
+			cluster.secretArnList = append(cluster.secretArnList, secret.ARN)
 			continue
 		}
 	}
-	cluster.secretArnList = sl
 
 	return nil
 }
 
 func reconcileClusterSecrets(cluster *Cluster) error {
-	cluster.secretArnChangeSet = &SecretChangeSet{}
 	add := diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
 	remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
 	cluster.secretArnChangeSet.add = append(cluster.secretArnChangeSet.add, add...)
@@ -124,18 +138,4 @@ func isCluster(name *string, tags []*secretsmanager.Tag) bool {
 	}
 
 	return false
-}
-
-func newSpinner() *yacspin.Spinner {
-	cfg := yacspin.Config{
-		Frequency:       50 * time.Millisecond,
-		CharSet:         yacspin.CharSets[14],
-		Suffix:          " retrieving data",
-		StopCharacter:   "✓",
-		SuffixAutoColon: true,
-		StopColors:      []string{"fgGreen"},
-	}
-
-	spinner, _ := yacspin.New(cfg)
-	return spinner
 }
