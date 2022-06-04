@@ -6,11 +6,11 @@ func diff(slice1, slice2 []*string) []*string {
 	var diff []*string
 	for _, s1 := range slice1 {
 		found := false
-	s2:
+	slice2:
 		for _, s2 := range slice2 {
 			if aws.StringValue(s1) == aws.StringValue(s2) {
 				found = true
-				break s2
+				break slice2
 			}
 		}
 		if !found {
