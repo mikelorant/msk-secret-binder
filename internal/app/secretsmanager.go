@@ -27,7 +27,7 @@ func listSecrets(api SecretsManagerListSecretsAPI) (secrets []types.SecretListEn
 	}
 
 	input := &secretsmanager.ListSecretsInput{
-		Filters:   []types.Filter{filter},
+		Filters: []types.Filter{filter},
 	}
 
 	for {

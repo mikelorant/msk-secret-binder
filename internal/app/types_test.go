@@ -14,7 +14,7 @@ func TestString(t *testing.T) {
 		{
 			name: "add",
 			give: SecretChangeSet{
-				add:    []string{"apple", "pear", "orange"},
+				add: []string{"apple", "pear", "orange"},
 			},
 			want: "+apple\n+pear\n+orange\n",
 		}, {
