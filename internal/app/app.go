@@ -40,6 +40,7 @@ func Run() error {
 		}
 		return nil
 	})
+
 	g.Go(func() error {
 		svc.secrets, err = listSecrets(svc.secretsmanager)
 		if err != nil {
@@ -47,20 +48,29 @@ func Run() error {
 		}
 		return nil
 	})
+
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("unable to list clusters and secrets: %w", err)
 	}
 
-	spinner.Message("list scram secrets")
+	total := len(svc.clusters)
+	name := make(chan string, total)
+	g.Go(func() error {
+		watchListScramSecrets(name, spinner)
+		return nil
+	})
+
 	for _, cluster := range svc.clusters {
 		cluster := cluster
 		g.Go(func() error {
 			if err := listScramSecrets(svc.kafka, cluster); err != nil {
 				return fmt.Errorf("unable to list scram secrets: %w", err)
 			}
+			name <- aws.ToString(cluster.clusterInfo.ClusterName)
 			return nil
 		})
 	}
+
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("unable to list scram secrets: %w", err)
 	}
@@ -155,4 +165,18 @@ func isClusterSecret(name *string, tags []secretsmanagertypes.Tag) bool {
 	}
 
 	return false
+}
+
+func watchListScramSecrets(name chan string, spinner *yacspin.Spinner) {
+	i := 0
+	for {
+		select {
+		case completed := <- name:
+			i++
+			spinner.Message(fmt.Sprintf("list scram secrets [%v/%v] - %v", i, cap(name), completed))
+			if i == cap(name) {
+				return
+			}
+		}
+	}
 }

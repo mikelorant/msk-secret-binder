@@ -11,7 +11,7 @@ import (
 func (svc *Service) printOverview() error {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 
-	tbl := table.New("Cluster Name", "Version", "Assosciated Secrets", "Additions", "Removals")
+	tbl := table.New("Cluster Name", "Version", "Assosciated", "Additions", "Removals")
 	tbl.WithHeaderFormatter(headerFmt)
 
 	for _, cluster := range svc.clusters {
