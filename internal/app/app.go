@@ -40,7 +40,8 @@ func Run() error {
 		return nil
 	})
 	g.Go(func() error {
-		if err := svc.listSecrets(); err != nil {
+		svc.secrets, err = listSecrets(svc.secretsmanager)
+		if err != nil {
 			return fmt.Errorf("unable to list secrets: %w", err)
 		}
 		return nil
