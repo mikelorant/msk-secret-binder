@@ -1,10 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 )
 
 const (
@@ -13,17 +14,15 @@ const (
 )
 
 func (svc *Service) listSecrets() error {
-	filter := &secretsmanager.Filter{
-		Key: aws.String(_filterKey),
-		Values: []*string{
-			aws.String(_filterValue),
-		},
+	filter := types.Filter{
+		Key:    types.FilterNameStringTypeName,
+		Values: []string{_filterValue},
 	}
 
 	var nextToken *string
 	for {
-		output, err := svc.secretsmanager.ListSecrets(&secretsmanager.ListSecretsInput{
-			Filters:   []*secretsmanager.Filter{filter},
+		output, err := svc.secretsmanager.ListSecrets(context.TODO(), &secretsmanager.ListSecretsInput{
+			Filters:   []types.Filter{filter},
 			NextToken: nextToken,
 		})
 		if err != nil {

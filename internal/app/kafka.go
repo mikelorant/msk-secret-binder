@@ -1,23 +1,25 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go/service/kafka"
+	"github.com/aws/aws-sdk-go-v2/service/kafka"
 )
 
 func (svc *Service) listClusters() error {
-	output, err := svc.kafka.ListClusters(&kafka.ListClustersInput{})
+	output, err := svc.kafka.ListClusters(context.TODO(), &kafka.ListClustersInput{})
 	if err != nil {
 		return fmt.Errorf("unable to list clusters: %w", err)
 	}
 
 	for _, ci := range output.ClusterInfoList {
+		ci := ci
 		svc.clusters = append(svc.clusters, &Cluster{
-			clusterInfo:              ci,
-			assosciatedSecretArnList: []*string{},
-			secretArnList:            []*string{},
+			clusterInfo:              &ci,
+			assosciatedSecretArnList: []string{},
+			secretArnList:            []string{},
 			secretArnChangeSet:       &SecretChangeSet{},
 		})
 	}
@@ -26,7 +28,7 @@ func (svc *Service) listClusters() error {
 }
 
 func (svc *Service) listScramSecrets(cluster *Cluster) error {
-	output, err := svc.kafka.ListScramSecrets(&kafka.ListScramSecretsInput{
+	output, err := svc.kafka.ListScramSecrets(context.TODO(), &kafka.ListScramSecretsInput{
 		ClusterArn: cluster.clusterInfo.ClusterArn,
 	})
 	if err != nil {
@@ -39,7 +41,7 @@ func (svc *Service) listScramSecrets(cluster *Cluster) error {
 }
 
 func (svc *Service) associateSecrets(cluster *Cluster) error {
-	out, err := svc.kafka.BatchAssociateScramSecret(&kafka.BatchAssociateScramSecretInput{
+	out, err := svc.kafka.BatchAssociateScramSecret(context.TODO(), &kafka.BatchAssociateScramSecretInput{
 		ClusterArn:    cluster.clusterInfo.ClusterArn,
 		SecretArnList: cluster.secretArnChangeSet.add,
 	})
@@ -54,7 +56,7 @@ func (svc *Service) associateSecrets(cluster *Cluster) error {
 }
 
 func (svc *Service) disassociateSecrets(cluster *Cluster) error {
-	out, err := svc.kafka.BatchDisassociateScramSecret(&kafka.BatchDisassociateScramSecretInput{
+	out, err := svc.kafka.BatchDisassociateScramSecret(context.TODO(), &kafka.BatchDisassociateScramSecretInput{
 		ClusterArn:    cluster.clusterInfo.ClusterArn,
 		SecretArnList: cluster.secretArnChangeSet.add,
 	})

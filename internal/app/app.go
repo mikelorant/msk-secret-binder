@@ -1,25 +1,28 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kafka"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kafka"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+
+	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 
 	"github.com/theckman/yacspin"
-)
 
-const (
-	_region = "ap-southeast-2"
+	"golang.org/x/sync/errgroup"
 )
 
 func Run() error {
-	svc := newService()
+	svc, err := newService()
+	if err != nil {
+		return fmt.Errorf("unable to create new service: %w", err)
+	}
 	spinner := newSpinner()
 
 	fmt.Println("Bind secrets to AWS MSK clusters.")
@@ -28,27 +31,37 @@ func Run() error {
 	spinner.Start()
 	spinner.Message("kafka list clusters and secretsmanager list secrets")
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		svc.listClusters()
-	}()
-	go func() {
-		defer wg.Done()
-		svc.listSecrets()
-	}()
-	wg.Wait()
+	g := new(errgroup.Group)
+
+	g.Go(func() error {
+		if err := svc.listClusters(); err != nil {
+			return fmt.Errorf("unable to list clusters: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if err := svc.listSecrets(); err != nil {
+			return fmt.Errorf("unable to list secrets: %w", err)
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("unable to list clusters and secrets: %w", err)
+	}
 
 	spinner.Message("list scram secrets")
 	for _, cluster := range svc.clusters {
-		wg.Add(1)
-		go func(cluster *Cluster) {
-			defer wg.Done()
-			svc.listScramSecrets(cluster)
-		}(cluster)
+		cluster := cluster
+		g.Go(func() error {
+			if err := svc.listScramSecrets(cluster); err != nil {
+				return fmt.Errorf("unable to list scram secrets: %w", err)
+			}
+			return nil
+		})
 	}
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("unable to list scram secrets: %w", err)
+	}
 
 	spinner.Suffix(" retrieved data")
 	spinner.Stop()
@@ -83,15 +96,17 @@ func Run() error {
 	return nil
 }
 
-func newService() *Service {
-	config := aws.NewConfig().WithRegion(_region)
-	session := session.Must(session.NewSession())
+func newService() (svc *Service, err error) {
+	config, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("unable to create aws config: %w", err)
+	}
 
 	return &Service{
-		kafka:          kafka.New(session, config),
-		secretsmanager: secretsmanager.New(session, config),
+		kafka:          kafka.NewFromConfig(config),
+		secretsmanager: secretsmanager.NewFromConfig(config),
 		clusters:       []*Cluster{},
-	}
+	}, nil
 }
 
 func newSpinner() *yacspin.Spinner {
@@ -108,10 +123,10 @@ func newSpinner() *yacspin.Spinner {
 	return spinner
 }
 
-func mapSecretsToClusters(cluster *Cluster, secrets []*secretsmanager.SecretListEntry) error {
+func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.SecretListEntry) error {
 	for _, secret := range secrets {
 		if isCluster(cluster.clusterInfo.ClusterName, secret.Tags) {
-			cluster.secretArnList = append(cluster.secretArnList, secret.ARN)
+			cluster.secretArnList = append(cluster.secretArnList, aws.ToString(secret.ARN))
 			continue
 		}
 	}
@@ -128,10 +143,10 @@ func reconcileClusterSecrets(cluster *Cluster) error {
 	return nil
 }
 
-func isCluster(name *string, tags []*secretsmanager.Tag) bool {
+func isCluster(name *string, tags []secretsmanagertypes.Tag) bool {
 	for _, tag := range tags {
-		if aws.StringValue(tag.Key) == "Cluster" {
-			if strings.HasPrefix(aws.StringValue(name), aws.StringValue(tag.Value)) {
+		if aws.ToString(tag.Key) == "Cluster" {
+			if strings.HasPrefix(aws.ToString(name), aws.ToString(tag.Value)) {
 				return true
 			}
 		}
