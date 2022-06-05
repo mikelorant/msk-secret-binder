@@ -42,8 +42,8 @@ func Run() error {
 		reconcileClusterSecrets(cluster)
 	}
 
-	svc.printOverview()
-	svc.printChangeSet()
+	printOverview(svc.clusters)
+	printChangeSet(svc.clusters)
 
 	// fmt.Println("Press enter to apply changes.")
 	// fmt.Scanln()

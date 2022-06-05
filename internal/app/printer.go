@@ -8,13 +8,13 @@ import (
 	"github.com/rodaine/table"
 )
 
-func (svc *Service) printOverview() error {
+func printOverview(clusters []*Cluster) error {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 
 	tbl := table.New("Cluster Name", "Version", "Assosciated", "Additions", "Removals")
 	tbl.WithHeaderFormatter(headerFmt)
 
-	for _, cluster := range svc.clusters {
+	for _, cluster := range clusters {
 		tbl.AddRow(
 			aws.ToString(cluster.clusterInfo.ClusterName),
 			aws.ToString(cluster.clusterInfo.CurrentBrokerSoftwareInfo.KafkaVersion),
@@ -30,8 +30,8 @@ func (svc *Service) printOverview() error {
 	return nil
 }
 
-func (svc *Service) printChangeSet() error {
-	for _, cluster := range svc.clusters {
+func printChangeSet(clusters []*Cluster) error {
+	for _, cluster := range clusters {
 		c := len(cluster.secretArnChangeSet.add) + len(cluster.secretArnChangeSet.remove)
 		if c > 0 {
 			fmt.Println(aws.ToString(cluster.clusterInfo.ClusterName))
