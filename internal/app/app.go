@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,8 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
 	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
-
-	"github.com/theckman/yacspin"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -53,10 +50,10 @@ func Run() error {
 		return fmt.Errorf("unable to list clusters and secrets: %w", err)
 	}
 
-	total := len(svc.clusters)
-	name := make(chan string, total)
+	clusterName := make(chan string, len(svc.clusters))
 	g.Go(func() error {
-		watchListScramSecrets(name, spinner)
+		format := "list scram secrets [%v/%v] - %v"
+		watchChan(clusterName, format, spinner)
 		return nil
 	})
 
@@ -66,7 +63,7 @@ func Run() error {
 			if err := listScramSecrets(svc.kafka, cluster); err != nil {
 				return fmt.Errorf("unable to list scram secrets: %w", err)
 			}
-			name <- aws.ToString(cluster.clusterInfo.ClusterName)
+			clusterName <- aws.ToString(cluster.clusterInfo.ClusterName)
 			return nil
 		})
 	}
@@ -121,20 +118,6 @@ func newService() (svc *Service, err error) {
 	}, nil
 }
 
-func newSpinner() *yacspin.Spinner {
-	cfg := yacspin.Config{
-		Frequency:       50 * time.Millisecond,
-		CharSet:         yacspin.CharSets[14],
-		Suffix:          " retrieving data",
-		StopCharacter:   "✓",
-		SuffixAutoColon: true,
-		StopColors:      []string{"fgGreen"},
-	}
-
-	spinner, _ := yacspin.New(cfg)
-	return spinner
-}
-
 func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.SecretListEntry) error {
 	for _, secret := range secrets {
 		if isClusterSecret(cluster.clusterInfo.ClusterName, secret.Tags) {
@@ -165,18 +148,4 @@ func isClusterSecret(name *string, tags []secretsmanagertypes.Tag) bool {
 	}
 
 	return false
-}
-
-func watchListScramSecrets(name chan string, spinner *yacspin.Spinner) {
-	i := 0
-	for {
-		select {
-		case completed := <- name:
-			i++
-			spinner.Message(fmt.Sprintf("list scram secrets [%v/%v] - %v", i, cap(name), completed))
-			if i == cap(name) {
-				return
-			}
-		}
-	}
 }
