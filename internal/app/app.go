@@ -29,7 +29,7 @@ func Run() error {
 	fmt.Println()
 
 	spinner.Start()
-	spinner.Message("kafka list clusters and secretsmanager list secrets")
+	spinner.Message("list kafka clusters and secretsmanager secrets")
 
 	g := new(errgroup.Group)
 
