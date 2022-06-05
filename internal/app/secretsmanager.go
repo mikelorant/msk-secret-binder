@@ -33,7 +33,7 @@ func listSecrets(api SecretsManagerListSecretsAPI) (secrets []types.SecretListEn
 	for {
 		output, err := api.ListSecrets(context.TODO(), input)
 		if err != nil {
-			return nil, fmt.Errorf("unable to list secrets: %w", err)
+			return secrets, fmt.Errorf("unable to list secrets: %w", err)
 		}
 
 		secrets = append(secrets, output.SecretList...)

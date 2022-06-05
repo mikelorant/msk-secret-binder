@@ -8,15 +8,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 )
 
-func (svc *Service) listClusters() error {
-	output, err := svc.kafka.ListClusters(context.TODO(), &kafka.ListClustersInput{})
+type KafkaAPI interface {
+	ListClusters(ctx context.Context, params *kafka.ListClustersInput, optFns ...func(*kafka.Options)) (*kafka.ListClustersOutput, error)
+	ListScramSecrets(ctx context.Context, params *kafka.ListScramSecretsInput, optFns ...func(*kafka.Options)) (*kafka.ListScramSecretsOutput, error)
+	BatchAssociateScramSecret(ctx context.Context, params *kafka.BatchAssociateScramSecretInput, optFns ...func(*kafka.Options)) (*kafka.BatchAssociateScramSecretOutput, error)
+	BatchDisassociateScramSecret(ctx context.Context, params *kafka.BatchDisassociateScramSecretInput, optFns ...func(*kafka.Options)) (*kafka.BatchDisassociateScramSecretOutput, error)
+}
+
+func listClusters(api KafkaAPI) (clusters []*Cluster, err error) {
+	clusters = []*Cluster{}
+
+	output, err := api.ListClusters(context.TODO(), &kafka.ListClustersInput{})
 	if err != nil {
-		return fmt.Errorf("unable to list clusters: %w", err)
+		return clusters, fmt.Errorf("unable to list clusters: %w", err)
 	}
 
 	for _, ci := range output.ClusterInfoList {
 		ci := ci
-		svc.clusters = append(svc.clusters, &Cluster{
+		clusters = append(clusters, &Cluster{
 			clusterInfo:              &ci,
 			assosciatedSecretArnList: []string{},
 			secretArnList:            []string{},
@@ -24,11 +33,11 @@ func (svc *Service) listClusters() error {
 		})
 	}
 
-	return nil
+	return clusters, nil
 }
 
-func (svc *Service) listScramSecrets(cluster *Cluster) error {
-	output, err := svc.kafka.ListScramSecrets(context.TODO(), &kafka.ListScramSecretsInput{
+func listScramSecrets(api KafkaAPI, cluster *Cluster) error {
+	output, err := api.ListScramSecrets(context.TODO(), &kafka.ListScramSecretsInput{
 		ClusterArn: cluster.clusterInfo.ClusterArn,
 	})
 	if err != nil {
@@ -40,8 +49,8 @@ func (svc *Service) listScramSecrets(cluster *Cluster) error {
 	return nil
 }
 
-func (svc *Service) associateSecrets(cluster *Cluster) error {
-	out, err := svc.kafka.BatchAssociateScramSecret(context.TODO(), &kafka.BatchAssociateScramSecretInput{
+func associateSecrets(api KafkaAPI, cluster *Cluster) error {
+	out, err := api.BatchAssociateScramSecret(context.TODO(), &kafka.BatchAssociateScramSecretInput{
 		ClusterArn:    cluster.clusterInfo.ClusterArn,
 		SecretArnList: cluster.secretArnChangeSet.add,
 	})
@@ -55,8 +64,8 @@ func (svc *Service) associateSecrets(cluster *Cluster) error {
 	return nil
 }
 
-func (svc *Service) disassociateSecrets(cluster *Cluster) error {
-	out, err := svc.kafka.BatchDisassociateScramSecret(context.TODO(), &kafka.BatchDisassociateScramSecretInput{
+func disassociateSecrets(api KafkaAPI, cluster *Cluster) error {
+	out, err := api.BatchDisassociateScramSecret(context.TODO(), &kafka.BatchDisassociateScramSecretInput{
 		ClusterArn:    cluster.clusterInfo.ClusterArn,
 		SecretArnList: cluster.secretArnChangeSet.add,
 	})

@@ -34,7 +34,8 @@ func Run() error {
 	g := new(errgroup.Group)
 
 	g.Go(func() error {
-		if err := svc.listClusters(); err != nil {
+		svc.clusters, err = listClusters(svc.kafka)
+		if err != nil {
 			return fmt.Errorf("unable to list clusters: %w", err)
 		}
 		return nil
@@ -54,7 +55,7 @@ func Run() error {
 	for _, cluster := range svc.clusters {
 		cluster := cluster
 		g.Go(func() error {
-			if err := svc.listScramSecrets(cluster); err != nil {
+			if err := listScramSecrets(svc.kafka, cluster); err != nil {
 				return fmt.Errorf("unable to list scram secrets: %w", err)
 			}
 			return nil
@@ -85,10 +86,10 @@ func Run() error {
 	// for _, cluster := range svc.clusters {
 	// 	name := aws.StringValue(cluster.clusterInfo.ClusterName)
 	// 	spinner.Message(fmt.Sprintf("updating scram secrets [%v]", name))
-	// 	if err := svc.associateSecrets(cluster); err != nil {
+	// 	if err := svc.associateSecrets(svc.kafka, cluster); err != nil {
 	// 		return fmt.Errorf("unable to assosciate secrets for %v: %w", name, err)
 	// 	}
-	// 	if err := svc.disassociateSecrets(cluster); err != nil {
+	// 	if err := svc.disassociateSecrets(svc.kafka, cluster); err != nil {
 	// 		return fmt.Errorf("unable to disassosciate secrets for %v: %w", name, err)
 	// 	}
 	// }
