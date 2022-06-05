@@ -1,18 +1,18 @@
 package app
 
-func diff(slice1, slice2 []string) []string {
+func diff(src, cmp []string) []string {
 	diff := []string{}
-	for _, s1 := range slice1 {
+	for _, s := range src {
 		found := false
-	slice2:
-		for _, s2 := range slice2 {
-			if s1 == s2 {
+	cmp:
+		for _, c := range cmp {
+			if s == c {
 				found = true
-				break slice2
+				break cmp
 			}
 		}
 		if !found {
-			diff = append(diff, s1)
+			diff = append(diff, s)
 		}
 	}
 
