@@ -30,13 +30,13 @@ func TestListSecrets(t *testing.T) {
 					t.Helper()
 					return &secretsmanager.ListSecretsOutput{
 						SecretList: []types.SecretListEntry{
-							types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
 						},
 					}, nil
 				})
 			},
 			want: []types.SecretListEntry{
-				types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
 			},
 		}, {
 			name: "many",
@@ -45,17 +45,17 @@ func TestListSecrets(t *testing.T) {
 					t.Helper()
 					return &secretsmanager.ListSecretsOutput{
 						SecretList: []types.SecretListEntry{
-							types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
-							types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
-							types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
+							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
+							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
 						},
 					}, nil
 				})
 			},
 			want: []types.SecretListEntry{
-				types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
-				types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
-				types.SecretListEntry{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
 			},
 		}, {
 			name: "pagination",

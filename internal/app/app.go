@@ -127,7 +127,7 @@ func newSpinner() *yacspin.Spinner {
 
 func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.SecretListEntry) error {
 	for _, secret := range secrets {
-		if isCluster(cluster.clusterInfo.ClusterName, secret.Tags) {
+		if isClusterSecret(cluster.clusterInfo.ClusterName, secret.Tags) {
 			cluster.secretArnList = append(cluster.secretArnList, aws.ToString(secret.ARN))
 			continue
 		}
@@ -145,7 +145,7 @@ func reconcileClusterSecrets(cluster *Cluster) error {
 	return nil
 }
 
-func isCluster(name *string, tags []secretsmanagertypes.Tag) bool {
+func isClusterSecret(name *string, tags []secretsmanagertypes.Tag) bool {
 	for _, tag := range tags {
 		if aws.ToString(tag.Key) == "Cluster" {
 			if strings.HasPrefix(aws.ToString(name), aws.ToString(tag.Value)) {
