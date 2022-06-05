@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"testing"
+
+	"github.com/MakeNowJust/heredoc"
 )
 
 func TestString(t *testing.T) {
@@ -16,20 +18,33 @@ func TestString(t *testing.T) {
 			give: SecretChangeSet{
 				add: []string{"apple", "pear", "orange"},
 			},
-			want: "+apple\n+pear\n+orange\n",
+			want: heredoc.Docf(`
+				+apple
+				+pear
+				+orange
+			`),
 		}, {
 			name: "remove",
 			give: SecretChangeSet{
 				remove: []string{"peach", "coconut"},
 			},
-			want: "-peach\n-coconut\n",
+			want: heredoc.Docf(`
+				-peach
+				-coconut
+			`),
 		}, {
 			name: "add_remove",
 			give: SecretChangeSet{
 				add:    []string{"apple", "pear", "orange"},
 				remove: []string{"peach", "coconut"},
 			},
-			want: "+apple\n+pear\n+orange\n-peach\n-coconut\n",
+			want: heredoc.Docf(`
+				+apple
+				+pear
+				+orange
+				-peach
+				-coconut
+			`),
 		}, {
 			name: "empty",
 			give: SecretChangeSet{},

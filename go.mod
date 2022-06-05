@@ -3,6 +3,7 @@ module github.com/mikelorant/msk-secret-binder
 go 1.18
 
 require (
+	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.16.4
 	github.com/aws/aws-sdk-go-v2/config v1.15.9
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.17.5
