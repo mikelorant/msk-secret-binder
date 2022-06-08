@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/theckman/yacspin"
 
+	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 
 	"golang.org/x/sync/errgroup"
@@ -34,7 +35,10 @@ func Run() error {
 	}
 
 	spinner.Message("list scram secrets")
-	listScramSecretsByCluster(svc, spinner)
+	if err := listScramSecretsByCluster(svc, spinner); err != nil {
+		spinner.StopFail()
+		return err
+	}
 
 	spinner.Suffix(" retrieved data")
 	spinner.Stop()
@@ -68,19 +72,21 @@ func newService() (svc *Service, err error) {
 	return &Service{
 		kafka:          kafka.NewFromConfig(config),
 		secretsmanager: secretsmanager.NewFromConfig(config),
-		clusters:       []*Cluster{},
 	}, nil
 }
 
 func listClustersSecrets(svc *Service) error {
+	clusterInfo := make(chan []kafkatypes.ClusterInfo, 1)
+	secretListEntry := make(chan []secretsmanagertypes.SecretListEntry, 1)
+
 	g := new(errgroup.Group)
 
 	g.Go(func() error {
-		clusters, err := listClusters(svc.kafka)
+		ci, err := listClusters(svc.kafka)
 		if err != nil {
 			return fmt.Errorf("unable to list clusters: %w", err)
 		}
-		svc.clusters = clusters
+		clusterInfo <- ci
 		return nil
 	})
 
@@ -89,13 +95,22 @@ func listClustersSecrets(svc *Service) error {
 		if err != nil {
 			return fmt.Errorf("unable to list secrets: %w", err)
 		}
-		svc.secrets = secrets
+		secretListEntry <- secrets
 		return nil
 	})
 
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("unable to list clusters and secrets: %w", err)
 	}
+
+	for _, ci := range <- clusterInfo {
+		ci := ci
+		svc.clusters = append(svc.clusters, &Cluster{
+			clusterInfo:              &ci,
+		})
+	}
+
+	svc.secrets = <- secretListEntry
 
 	return nil
 }
@@ -114,9 +129,11 @@ func listScramSecretsByCluster(svc *Service, spinner *yacspin.Spinner) error {
 	for _, cluster := range svc.clusters {
 		cluster := cluster
 		g.Go(func() error {
-			if err := listScramSecrets(svc.kafka, cluster); err != nil {
+			scramSecrets, err := listScramSecrets(svc.kafka, cluster.clusterInfo.ClusterArn)
+			if err != nil {
 				return fmt.Errorf("unable to list scram secrets: %w", err)
 			}
+			cluster.assosciatedSecretArnList = scramSecrets
 			clusterName <- aws.ToString(cluster.clusterInfo.ClusterName)
 			return nil
 		})
@@ -158,8 +175,11 @@ func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.Secret
 func reconcileClusterSecrets(cluster *Cluster) error {
 	add := diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
 	remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
-	cluster.secretArnChangeSet.add = append(cluster.secretArnChangeSet.add, add...)
-	cluster.secretArnChangeSet.remove = append(cluster.secretArnChangeSet.remove, remove...)
+
+	cluster.secretArnChangeSet = &SecretChangeSet{
+		add: add,
+		remove: remove,
+	}
 
 	return nil
 }
