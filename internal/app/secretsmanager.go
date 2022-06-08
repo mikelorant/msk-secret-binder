@@ -6,19 +6,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
+	"github.com/aws/smithy-go"
 )
 
-type SecretsManagerListSecretsAPI interface {
-	ListSecrets(ctx context.Context,
-		input *secretsmanager.ListSecretsInput,
-		optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error)
+type SecretsManagerClientAPI interface {
+	ListSecrets(context.Context, *secretsmanager.ListSecretsInput, ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error)
 }
 
 const (
 	_filterValue = "AmazonMSK_"
 )
 
-func listSecrets(api SecretsManagerListSecretsAPI) (secrets []types.SecretListEntry, err error) {
+func listSecrets(cl SecretsManagerClientAPI) (secrets []types.SecretListEntry, err error) {
 	secrets = []types.SecretListEntry{}
 
 	filter := types.Filter{
@@ -30,18 +29,21 @@ func listSecrets(api SecretsManagerListSecretsAPI) (secrets []types.SecretListEn
 		Filters: []types.Filter{filter},
 	}
 
-	for {
-		output, err := api.ListSecrets(context.TODO(), input)
+	options := func(o *secretsmanager.ListSecretsPaginatorOptions) {
+		o.Limit = 100
+	}
+
+	pagination := secretsmanager.NewListSecretsPaginator(cl, input, options)
+	for pagination.HasMorePages() {
+		output, err := pagination.NextPage(context.TODO())
 		if err != nil {
+			var apiErr smithy.APIError
+			if errors.As(err, &apiErr) {
+				return secrets, fmt.Errorf("unable to list secrets: %v", apiErr.ErrorMessage())
+			}
 			return secrets, fmt.Errorf("unable to list secrets: %w", err)
 		}
-
 		secrets = append(secrets, output.SecretList...)
-		if output.NextToken == nil {
-			break
-		}
-
-		input.NextToken = output.NextToken
 	}
 
 	return secrets, nil
