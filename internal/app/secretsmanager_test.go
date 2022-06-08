@@ -2,8 +2,9 @@ package app
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,96 +12,105 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 )
 
-type mockListSecretsAPI func(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error)
+type mockSecretsManagerClientAPI struct {
+	listSecretsOutput []*secretsmanager.ListSecretsOutput
+	err               error
+}
 
-func (m mockListSecretsAPI) ListSecrets(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
-	return m(ctx, input, optFns...)
+func (m mockSecretsManagerClientAPI) ListSecrets(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
+	var page int
+	var nextToken *string
+
+	if input.NextToken != nil {
+		page, _ = strconv.Atoi(aws.ToString(input.NextToken))
+	}
+
+	if page < len(m.listSecretsOutput)-1 {
+		nextToken = aws.String(strconv.Itoa(page + 1))
+	} else {
+		nextToken = nil
+	}
+
+	return &secretsmanager.ListSecretsOutput{
+		NextToken:  nextToken,
+		SecretList: m.listSecretsOutput[page].SecretList,
+	}, m.err
 }
 
 func TestListSecrets(t *testing.T) {
 	tests := []struct {
-		name   string
-		client func(t *testing.T) SecretsManagerListSecretsAPI
-		want   []types.SecretListEntry
+		name string
+		give []*secretsmanager.ListSecretsOutput
+		want []types.SecretListEntry
+		err  error
 	}{
 		{
 			name: "one",
-			client: func(t *testing.T) SecretsManagerListSecretsAPI {
-				return mockListSecretsAPI(func(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
-					t.Helper()
-					return &secretsmanager.ListSecretsOutput{
-						SecretList: []types.SecretListEntry{
-							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
-						},
-					}, nil
-				})
+			give: []*secretsmanager.ListSecretsOutput{
+				{
+					SecretList: []types.SecretListEntry{
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
+					},
+				},
 			},
 			want: []types.SecretListEntry{
 				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
 			},
 		}, {
 			name: "many",
-			client: func(t *testing.T) SecretsManagerListSecretsAPI {
-				return mockListSecretsAPI(func(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
-					t.Helper()
-					return &secretsmanager.ListSecretsOutput{
-						SecretList: []types.SecretListEntry{
-							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
-							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
-							{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
-						},
-					}, nil
-				})
+			give: []*secretsmanager.ListSecretsOutput{
+				{
+					SecretList: []types.SecretListEntry{
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
+					},
+				}, {
+					SecretList: []types.SecretListEntry{
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
+						{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-456789")},
+					},
+				},
 			},
 			want: []types.SecretListEntry{
 				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-123456")},
 				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-234567")},
 				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-345678")},
+				{ARN: aws.String("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-456789")},
 			},
-		}, {
-			name: "pagination",
-			client: func(t *testing.T) SecretsManagerListSecretsAPI {
-				return mockListSecretsAPI(func(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
-					t.Helper()
-					sl := []types.SecretListEntry{}
-					for i := 1; i < 100; i++ {
-						sl = append(sl, types.SecretListEntry{
-							ARN: aws.String(fmt.Sprintf("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-%v", i)),
-						})
-					}
-					return &secretsmanager.ListSecretsOutput{
-						SecretList: sl,
-					}, nil
-				})
-			},
-			want: func() []types.SecretListEntry {
-				sl := []types.SecretListEntry{}
-				for i := 1; i < 100; i++ {
-					sl = append(sl, types.SecretListEntry{
-						ARN: aws.String(fmt.Sprintf("arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:AmazonMSK_example-%v", i)),
-					})
-				}
-				return sl
-			}(),
 		}, {
 			name: "none",
-			client: func(t *testing.T) SecretsManagerListSecretsAPI {
-				return mockListSecretsAPI(func(ctx context.Context, input *secretsmanager.ListSecretsInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.ListSecretsOutput, error) {
-					t.Helper()
-					return &secretsmanager.ListSecretsOutput{
-						SecretList: []types.SecretListEntry{},
-					}, nil
-				})
+			give: []*secretsmanager.ListSecretsOutput{
+				{
+					SecretList: []types.SecretListEntry{},
+				},
 			},
 			want: []types.SecretListEntry{},
+		}, {
+			name: "error",
+			give: []*secretsmanager.ListSecretsOutput{
+				{
+					SecretList: []types.SecretListEntry{},
+				},
+			},
+			want: []types.SecretListEntry{},
+			err:  errors.New("The security token included in the request is invalid."),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := listSecrets(tt.client(t))
-			if err != nil {
-				t.Fatalf("expect no error, got %v", err)
+			cl := func() *mockSecretsManagerClientAPI {
+				return &mockSecretsManagerClientAPI{
+					listSecretsOutput: tt.give,
+					err:               tt.err,
+				}
+			}()
+
+			got, err := listSecrets(cl)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("got '%v', want '%v'", err, tt.err)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got %v, want %v", got, tt.want)
