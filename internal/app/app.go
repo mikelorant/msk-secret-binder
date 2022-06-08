@@ -28,7 +28,10 @@ func Run() error {
 
 	spinner.Start()
 	spinner.Message("list kafka clusters and secretsmanager secrets")
-	listClustersSecrets(svc)
+	if err := listClustersSecrets(svc); err != nil {
+		spinner.StopFail()
+		return err
+	}
 
 	spinner.Message("list scram secrets")
 	listScramSecretsByCluster(svc, spinner)

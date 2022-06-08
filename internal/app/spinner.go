@@ -13,6 +13,7 @@ func newSpinner() *yacspin.Spinner {
 		CharSet:         yacspin.CharSets[14],
 		Suffix:          " retrieving data",
 		StopCharacter:   "✓",
+		StopFailCharacter:   "✗",
 		SuffixAutoColon: true,
 		StopColors:      []string{"fgGreen"},
 	}
