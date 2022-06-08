@@ -103,14 +103,14 @@ func listClustersSecrets(svc *Service) error {
 		return fmt.Errorf("unable to list clusters and secrets: %w", err)
 	}
 
-	for _, ci := range <- clusterInfo {
+	for _, ci := range <-clusterInfo {
 		ci := ci
 		svc.clusters = append(svc.clusters, &Cluster{
-			clusterInfo:              &ci,
+			clusterInfo: &ci,
 		})
 	}
 
-	svc.secrets = <- secretListEntry
+	svc.secrets = <-secretListEntry
 
 	return nil
 }
@@ -177,7 +177,7 @@ func reconcileClusterSecrets(cluster *Cluster) error {
 	remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
 
 	cluster.secretArnChangeSet = &SecretChangeSet{
-		add: add,
+		add:    add,
 		remove: remove,
 	}
 
