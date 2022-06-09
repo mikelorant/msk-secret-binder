@@ -120,11 +120,10 @@ func listScramSecretsByCluster(svc *Service, spinner *yacspin.Spinner) error {
 
 	clusterName := make(chan string, len(svc.clusters))
 
-	g.Go(func() error {
+	go func() {
 		format := "list scram secrets [%v/%v] - %v"
 		watchChan(clusterName, format, spinner)
-		return nil
-	})
+	}()
 
 	for _, cluster := range svc.clusters {
 		cluster := cluster
@@ -142,6 +141,8 @@ func listScramSecretsByCluster(svc *Service, spinner *yacspin.Spinner) error {
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("unable to list scram secrets: %w", err)
 	}
+
+	close(clusterName)
 
 	return nil
 }

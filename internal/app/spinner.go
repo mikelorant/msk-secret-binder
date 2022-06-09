@@ -24,14 +24,8 @@ func newSpinner() *yacspin.Spinner {
 
 func watchChan(msg chan string, format string, spinner *yacspin.Spinner) {
 	i := 0
-	for {
-		select {
-		case event := <-msg:
-			i++
-			spinner.Message(fmt.Sprintf(format, i, cap(msg), event))
-			if i == cap(msg) {
-				return
-			}
-		}
+	for m := range msg {
+		i++
+		spinner.Message(fmt.Sprintf(format, i, cap(msg), m))
 	}
 }
