@@ -59,11 +59,11 @@ func (m mockKafkaClientAPI) ListScramSecrets(ctx context.Context, params *kafka.
 }
 
 func (m mockKafkaClientAPI) BatchAssociateScramSecret(ctx context.Context, params *kafka.BatchAssociateScramSecretInput, optFns ...func(*kafka.Options)) (*kafka.BatchAssociateScramSecretOutput, error) {
-	return nil, nil
+	return &kafka.BatchAssociateScramSecretOutput{}, nil
 }
 
 func (m mockKafkaClientAPI) BatchDisassociateScramSecret(ctx context.Context, params *kafka.BatchDisassociateScramSecretInput, optFns ...func(*kafka.Options)) (*kafka.BatchDisassociateScramSecretOutput, error) {
-	return nil, nil
+	return &kafka.BatchDisassociateScramSecretOutput{}, nil
 }
 
 func TestListClusters(t *testing.T) {
