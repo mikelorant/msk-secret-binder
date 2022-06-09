@@ -64,14 +64,14 @@ func Run() error {
 }
 
 func newService() (svc *Service, err error) {
-	config, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("unable to create aws config: %w", err)
 	}
 
 	return &Service{
-		kafka:          kafka.NewFromConfig(config),
-		secretsmanager: secretsmanager.NewFromConfig(config),
+		kafka:          kafka.NewFromConfig(cfg),
+		secretsmanager: secretsmanager.NewFromConfig(cfg),
 	}, nil
 }
 

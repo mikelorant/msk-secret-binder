@@ -95,7 +95,7 @@ func TestListSecrets(t *testing.T) {
 				},
 			},
 			want: []types.SecretListEntry{},
-			err:  errors.New("The security token included in the request is invalid."),
+			err:  errors.New("the security token included in the request is invalid"),
 		},
 	}
 

@@ -153,7 +153,7 @@ func TestListClusters(t *testing.T) {
 				},
 			},
 			want: []types.ClusterInfo{},
-			err:  errors.New("The security token included in the request is invalid."),
+			err:  errors.New("the security token included in the request is invalid"),
 		},
 	}
 
@@ -235,7 +235,7 @@ func TestListScramSecrets(t *testing.T) {
 				},
 			},
 			want: []string{},
-			err:  errors.New("The security token included in the request is invalid."),
+			err:  errors.New("the security token included in the request is invalid"),
 		},
 	}
 
