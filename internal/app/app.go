@@ -14,6 +14,9 @@ import (
 	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	secretsmanagertypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 
+	"github.com/mikelorant/msk-secret-binder/internal/sliceutil"
+	"github.com/mikelorant/msk-secret-binder/internal/spinner"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -22,26 +25,30 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("unable to create new service: %w", err)
 	}
-	spinner := newSpinner()
+
+	spin, err := spinner.NewSpinner()
+	if err != nil {
+		return fmt.Errorf("unable to create spinner: %w", err)
+	}
 
 	fmt.Println("Bind secrets to AWS MSK clusters.")
 	fmt.Println()
 
-	spinner.Start()
-	spinner.Message("list kafka clusters and secretsmanager secrets")
+	spin.Start()
+	spin.Message("list kafka clusters and secretsmanager secrets")
 	if err := listClustersSecrets(svc); err != nil {
-		spinner.StopFail()
+		spin.StopFail()
 		return err
 	}
 
-	spinner.Message("list scram secrets")
-	if err := listScramSecretsByCluster(svc, spinner); err != nil {
-		spinner.StopFail()
+	spin.Message("list scram secrets")
+	if err := listScramSecretsByCluster(svc, spin); err != nil {
+		spin.StopFail()
 		return err
 	}
 
-	spinner.Suffix(" retrieved data")
-	spinner.Stop()
+	spin.Suffix(" retrieved data")
+	spin.Stop()
 	fmt.Println()
 
 	for _, cluster := range svc.clusters {
@@ -115,14 +122,14 @@ func listClustersSecrets(svc *Service) error {
 	return nil
 }
 
-func listScramSecretsByCluster(svc *Service, spinner *yacspin.Spinner) error {
+func listScramSecretsByCluster(svc *Service, spin *yacspin.Spinner) error {
 	g := new(errgroup.Group)
 
 	clusterName := make(chan string, len(svc.clusters))
 
 	go func() {
 		format := "list scram secrets [%v/%v] - %v"
-		watchChan(clusterName, format, spinner)
+		spinner.WatchChan(spin, clusterName, format)
 	}()
 
 	for _, cluster := range svc.clusters {
@@ -174,8 +181,8 @@ func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.Secret
 }
 
 func reconcileClusterSecrets(cluster *Cluster) error {
-	add := diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
-	remove := diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
+	add := sliceutil.Diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
+	remove := sliceutil.Diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
 
 	cluster.secretArnChangeSet = &SecretChangeSet{
 		add:    add,

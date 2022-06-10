@@ -1,4 +1,4 @@
-package app
+package spinner
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-func newSpinner() *yacspin.Spinner {
-	cfg := yacspin.Config{
+func NewSpinner() (s *yacspin.Spinner, err error) {
+	return yacspin.New(yacspin.Config{
 		Frequency:         50 * time.Millisecond,
 		CharSet:           yacspin.CharSets[14],
 		Suffix:            " retrieving data",
@@ -16,16 +16,13 @@ func newSpinner() *yacspin.Spinner {
 		StopFailCharacter: "✗",
 		SuffixAutoColon:   true,
 		StopColors:        []string{"fgGreen"},
-	}
-
-	spinner, _ := yacspin.New(cfg)
-	return spinner
+	})
 }
 
-func watchChan(msg chan string, format string, spinner *yacspin.Spinner) {
+func WatchChan(s *yacspin.Spinner, msg chan string, format string) {
 	i := 0
 	for m := range msg {
 		i++
-		spinner.Message(fmt.Sprintf(format, i, cap(msg), m))
+		s.Message(fmt.Sprintf(format, i, cap(msg), m))
 	}
 }

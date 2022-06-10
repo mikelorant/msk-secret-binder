@@ -1,6 +1,6 @@
-package app
+package sliceutil
 
-func diff(src, cmp []string) []string {
+func Diff(src, cmp []string) []string {
 	diff := []string{}
 	for _, s := range src {
 		found := false

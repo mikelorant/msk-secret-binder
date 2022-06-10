@@ -1,4 +1,4 @@
-package app
+package sliceutil
 
 import (
 	"testing"
@@ -78,7 +78,7 @@ func TestDiff(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := diff(tt.giveSrc, tt.giveCmp)
+			got := Diff(tt.giveSrc, tt.giveCmp)
 			td.Cmp(t, got, tt.want)
 		})
 	}
