@@ -103,12 +103,10 @@ func TestListSecrets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := func() *mockSecretsManagerClientAPI {
-				return &mockSecretsManagerClientAPI{
-					listSecretsOutput: tt.give,
-					err:               tt.err,
-				}
-			}()
+			cl := &mockSecretsManagerClientAPI{
+				listSecretsOutput: tt.give,
+				err:               tt.err,
+			}
 
 			got, err := listSecrets(cl)
 			assert.ErrorIs(t, err, tt.err)

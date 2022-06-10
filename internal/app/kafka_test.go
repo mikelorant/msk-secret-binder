@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -161,20 +160,14 @@ func TestListClusters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := func() *mockKafkaClientAPI {
-				return &mockKafkaClientAPI{
-					listClustersOutput: tt.give,
-					err:                tt.err,
-				}
-			}()
+			cl := &mockKafkaClientAPI{
+				listClustersOutput: tt.give,
+				err:                tt.err,
+			}
 
 			got, err := listClusters(cl)
-			if !errors.Is(err, tt.err) {
-				t.Errorf("got '%v', want '%v'", err, tt.err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %+v, want %+v", got, tt.want)
-			}
+			assert.ErrorIs(t, err, tt.err)
+			td.Cmp(t, got, tt.want)
 		})
 	}
 }
@@ -243,12 +236,10 @@ func TestListScramSecrets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := func() *mockKafkaClientAPI {
-				return &mockKafkaClientAPI{
-					listScramSecretsOutput: tt.give,
-					err:                    tt.err,
-				}
-			}()
+			cl := &mockKafkaClientAPI{
+				listScramSecretsOutput: tt.give,
+				err:                    tt.err,
+			}
 
 			arn := aws.String("arn:aws:kafka:ap-southeast-2:123456789012:cluster/example1/1")
 
