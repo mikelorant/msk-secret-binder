@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/maxatome/go-testdeep/td"
 )
 
 func TestString(t *testing.T) {
@@ -55,9 +56,7 @@ func TestString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := fmt.Sprint(tt.give)
-			if got != tt.want {
-				t.Errorf("got %v, want %v", got, tt.want)
-			}
+			td.Cmp(t, got, tt.want)
 		})
 	}
 }

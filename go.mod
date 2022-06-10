@@ -10,7 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.15.10
 	github.com/aws/smithy-go v1.11.3
 	github.com/fatih/color v1.13.0
+	github.com/maxatome/go-testdeep v1.11.0
 	github.com/rodaine/table v1.0.1
+	github.com/stretchr/testify v1.7.0
 	github.com/theckman/yacspin v0.13.12
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 )
@@ -24,9 +26,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.7 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

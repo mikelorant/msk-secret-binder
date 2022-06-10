@@ -3,13 +3,15 @@ package app
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
+
+	"github.com/maxatome/go-testdeep/td"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockSecretsManagerClientAPI struct {
@@ -109,12 +111,8 @@ func TestListSecrets(t *testing.T) {
 			}()
 
 			got, err := listSecrets(cl)
-			if !errors.Is(err, tt.err) {
-				t.Errorf("got '%v', want '%v'", err, tt.err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %v, want %v", got, tt.want)
-			}
+			assert.ErrorIs(t, err, tt.err)
+			td.Cmp(t, got, tt.want)
 		})
 	}
 }

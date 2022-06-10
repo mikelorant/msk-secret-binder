@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	"github.com/aws/aws-sdk-go-v2/service/kafka/types"
+	"github.com/maxatome/go-testdeep/td"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockKafkaClientAPI struct {
@@ -251,12 +253,8 @@ func TestListScramSecrets(t *testing.T) {
 			arn := aws.String("arn:aws:kafka:ap-southeast-2:123456789012:cluster/example1/1")
 
 			got, err := listScramSecrets(cl, arn)
-			if !errors.Is(err, tt.err) {
-				t.Errorf("got '%v', want '%v'", err, tt.err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %+v, want %+v", got, tt.want)
-			}
+			assert.ErrorIs(t, err, tt.err)
+			td.Cmp(t, got, tt.want)
 		})
 	}
 }

@@ -1,8 +1,9 @@
 package app
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/maxatome/go-testdeep/td"
 )
 
 func TestDiff(t *testing.T) {
@@ -78,9 +79,7 @@ func TestDiff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := diff(tt.giveSrc, tt.giveCmp)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %v, want %v", got, tt.want)
-			}
+			td.Cmp(t, got, tt.want)
 		})
 	}
 }
