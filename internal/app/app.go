@@ -59,13 +59,13 @@ func Run() error {
 	printOverview(svc.clusters)
 	printChangeSet(svc.clusters)
 
-	// fmt.Println("Press enter to apply changes.")
-	// fmt.Scanln()
-	//
-	// spinner.Suffix(" modifying clusters")
-	// spinner.Start()
-	// updateClustersSecrets(svc, spinner)
-	// spinner.Stop()
+	fmt.Println("Press enter to apply changes.")
+	fmt.Scanln()
+
+	spin.Suffix(" modifying clusters")
+	spin.Start()
+	updateClustersSecrets(svc, spin)
+	spin.Stop()
 
 	return nil
 }
@@ -154,16 +154,16 @@ func listScramSecretsByCluster(svc *Service, spin *yacspin.Spinner) error {
 	return nil
 }
 
-func updateClustersSecrets(svc *Service, spinner *yacspin.Spinner) error {
+func updateClustersSecrets(svc *Service, spin *yacspin.Spinner) error {
 	for _, cluster := range svc.clusters {
 		name := aws.ToString(cluster.clusterInfo.ClusterName)
-		spinner.Message(fmt.Sprintf("updating scram secrets [%v]", name))
+		spin.Message(fmt.Sprintf("updating scram secrets [%v]", name))
 		if err := associateSecrets(svc.kafka, cluster); err != nil {
 			return fmt.Errorf("unable to assosciate secrets for %v: %w", name, err)
 		}
-		if err := disassociateSecrets(svc.kafka, cluster); err != nil {
-			return fmt.Errorf("unable to disassosciate secrets for %v: %w", name, err)
-		}
+		// if err := disassociateSecrets(svc.kafka, cluster); err != nil {
+		// 	return fmt.Errorf("unable to disassosciate secrets for %v: %w", name, err)
+		// }
 	}
 
 	return nil
@@ -182,7 +182,8 @@ func mapSecretsToClusters(cluster *Cluster, secrets []secretsmanagertypes.Secret
 
 func reconcileClusterSecrets(cluster *Cluster) error {
 	add := sliceutil.Diff(cluster.secretArnList, cluster.assosciatedSecretArnList)
-	remove := sliceutil.Diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
+	// remove := sliceutil.Diff(cluster.assosciatedSecretArnList, cluster.secretArnList)
+	remove := []string{}
 
 	cluster.secretArnChangeSet = &SecretChangeSet{
 		add:    add,
